@@ -1,0 +1,13 @@
+/CarePortal/CarePortal.Api/bin/Debug/net9.0
+/CarePortal/CarePortal.Api/obj
+/CarePortal/CarePortal.Persistence/bin/Debug/net9.0
+/CarePortal/CarePortal.Persistence/obj
+/CarePortal/CarePortal.Shared/obj
+/CarePortal/CarePortal.Shared/bin/Debug/net9.0
+/CarePortal/.vs/CarePortal
+/CarePortal/CarePortal.Application/bin/Debug/net9.0
+/CarePortal/CarePortal.Application/obj
+/CarePortal/CarePortal.Domain/bin/Debug/net9.0
+/CarePortal/CarePortal.Domain/obj
+/CarePortal/CarePortal.Infrastructure/bin/Debug/net9.0
+/CarePortal/CarePortal.Infrastructure/obj
