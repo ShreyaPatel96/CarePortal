@@ -1,5 +1,19 @@
 # .NET Core and ASP.NET Core
 # Build results
+/CarePortal.Api/bin/Debug/net9.0
+/CarePortal.Api/obj
+/CarePortal.Persistence/bin/Debug/net9.0
+/CarePortal.Persistence/obj
+/CarePortal.Shared/obj
+/CarePortal.Shared/bin/Debug/net9.0
+/.vs/CarePortal
+/CarePortal.Application/bin/Debug/net9.0
+/CarePortal.Application/obj
+/CarePortal.Domain/bin/Debug/net9.0
+/CarePortal.Domain/obj
+/CarePortal.Infrastructure/bin/Debug/net9.0
+/CarePortal.Infrastructure/obj
+
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
