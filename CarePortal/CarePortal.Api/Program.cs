@@ -6,7 +6,6 @@ using CarePortal.Infrastructure.Repositories;
 using CarePortal.Infrastructure.Services;
 using CarePortal.Persistence.Context;
 using CarePortal.Persistence.Data;
-using CarePortal.Shared.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -97,8 +96,8 @@ builder.Services.AddAuthentication(options =>
 // Authorization Configuration
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(Roles.Admin, policy => policy.RequireRole(Roles.Admin));
-    options.AddPolicy(Roles.Staff, policy => policy.RequireRole(Roles.Staff));
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Staff", policy => policy.RequireRole("Staff"));
 });
 
 // Repository Registration

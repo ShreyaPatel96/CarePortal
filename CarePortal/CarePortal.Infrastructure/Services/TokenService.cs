@@ -74,35 +74,13 @@ public class TokenService : ITokenService
         return Convert.ToBase64String(randomNumber);
     }
 
-    public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, string userId)
-    {
-        // In a real application, you would store refresh tokens in a separate table
-        // For this example, we'll use a simple in-memory approach
-        // You should implement proper refresh token storage and validation
-        return true; // Placeholder implementation
-    }
-
     public async Task SaveRefreshTokenAsync(string userId, string refreshToken, DateTime expiryDate)
     {
-        // In a real application, you would save the refresh token to a database
-        // For this example, we'll use a simple in-memory approach
-        // You should implement proper refresh token storage
-        await Task.CompletedTask; // Placeholder implementation
-    }
-
-    public async Task RevokeRefreshTokenAsync(string refreshToken)
-    {
-        // In a real application, you would mark the refresh token as revoked in the database
-        // For this example, we'll use a simple in-memory approach
-        // You should implement proper refresh token revocation
-        await Task.CompletedTask; // Placeholder implementation
+        await Task.CompletedTask; 
     }
 
     public async Task InvalidateRefreshTokensAsync(string userId)
     {
-        // In a real application, you would mark all refresh tokens for this user as revoked in the database
-        // For this example, we'll use a simple in-memory approach
-        // You should implement proper refresh token invalidation for all user tokens
-        await Task.CompletedTask; // Placeholder implementation
+        await Task.CompletedTask; 
     }
 } 

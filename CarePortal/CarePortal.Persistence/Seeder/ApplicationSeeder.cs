@@ -31,11 +31,17 @@ public static class ApplicationSeeder
     {
         // Get all UserRole enum values
         var userRoles = Enum.GetValues<UserRole>();
+        var currentRoleNames = userRoles.Select(r => r.GetRoleName()).ToHashSet();
 
+        // Get all existing roles from database
+        var existingRoles = await roleManager.Roles.ToListAsync();
+        var existingRoleNames = existingRoles.Select(r => r.Name).ToHashSet();
+
+        // Create new roles that don't exist
         foreach (var userRole in userRoles)
         {
             var roleName = userRole.GetRoleName();
-            if (!await roleManager.RoleExistsAsync(roleName))
+            if (!existingRoleNames.Contains(roleName))
             {
                 var role = new ApplicationRole
                 {
@@ -46,6 +52,16 @@ public static class ApplicationSeeder
                 };
 
                 await roleManager.CreateAsync(role);
+            }
+        }
+
+        // Remove old roles that are no longer in the enum
+        foreach (var existingRole in existingRoles)
+        {
+            if (!currentRoleNames.Contains(existingRole.Name))
+            {
+                existingRole.IsDeleted = true;
+                await roleManager.UpdateAsync(existingRole);
             }
         }
     }

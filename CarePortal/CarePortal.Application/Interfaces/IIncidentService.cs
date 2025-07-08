@@ -11,12 +11,4 @@ public interface IIncidentService
     Task<IncidentDto> CreateAsync(CreateIncidentDto createIncidentDto, string? currentUserId = null);
     Task<IncidentDto> UpdateAsync(int id, UpdateIncidentDto updateIncidentDto, string? currentUserId = null);
     Task<bool> DeleteAsync(int id);
-    Task<bool> ResolveIncidentAsync(int id, string resolvedBy, string resolutionNotes, string? currentUserId = null);
-    Task<List<IncidentDto>> GetByClientAsync(int clientId);
-    Task<List<IncidentDto>> GetByStaffAsync(string staffId);
-    Task<List<IncidentDto>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
-    Task<IncidentStatsDto> GetStatsAsync();
-    Task<IncidentStatsDto> GetStatsByDateRangeAsync(DateTime startDate, DateTime endDate);
-    Task<string> UploadPhotoAsync(IFormFile photo);
-    string GetPhotoUrl(string photoPath);
 } 

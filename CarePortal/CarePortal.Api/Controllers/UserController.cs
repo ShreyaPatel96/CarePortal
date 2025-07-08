@@ -25,6 +25,7 @@ public class UserController : BaseController
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<UserDto>> GetById(string id)
     {
         var userId = User.IsInRole("Admin") ? id : User.FindFirst("sub")?.Value;
@@ -69,6 +70,7 @@ public class UserController : BaseController
     }
 
     [HttpPost("{id}/change-password")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ChangePassword(string id, [FromBody] ChangePasswordDto dto)
     {
         if (!User.IsInRole("Admin") && User.FindFirst("sub")?.Value != id)

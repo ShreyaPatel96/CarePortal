@@ -62,7 +62,37 @@ class UserService {
       params.append('search', search);
     }
 
-    return apiService.get<UserListDto>(`${this.baseUrl}?${params.toString()}`);
+    const url = `${this.baseUrl}?${params.toString()}`;
+    return apiService.get<UserListDto>(url);
+  }
+
+  // Get all users (simple version for backward compatibility)
+  async getUsers(): Promise<UserDto[]> {
+    const response = await this.getAllUsers(1, 1000);
+    return response.users;
+  }
+
+  // Search users
+  async searchUsers(term: string): Promise<UserDto[]> {
+    const response = await this.getAllUsers(1, 1000, term);
+    return response.users;
+  }
+
+  // Get users by role
+  async getUsersByRole(role: string): Promise<UserDto[]> {
+    const response = await apiService.get<UserListDto>(`${this.baseUrl}/role/${role}`);
+    return response.users;
+  }
+
+  // Get all staff members
+  async getStaff(): Promise<UserDto[]> {
+    const response = await apiService.get<UserListDto>(`${this.baseUrl}/staff`);
+    return response.users;
+  }
+
+  // Get all roles
+  async getRoles(): Promise<string[]> {
+    return apiService.get<string[]>(`${this.baseUrl}/roles`);
   }
 
   // Get user by ID

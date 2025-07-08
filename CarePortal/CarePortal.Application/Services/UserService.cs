@@ -39,28 +39,6 @@ public class UserService : IUserService
         };
     }
 
-    public async Task<UserDto?> GetByEmailAsync(string email)
-    {
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user == null) return null;
-
-        var roles = await _userManager.GetRolesAsync(user);
-        var role = roles.FirstOrDefault() ?? UserRole.Staff.GetRoleName();
-        
-        return new UserDto
-        {
-            Id = user.Id,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Email = user.Email!,
-            Role = role,
-            RoleDisplayName = GetRoleDisplayName(role),
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt,
-            LastLoginAt = user.LastLoginAt
-        };
-    }
-
     public async Task<UserListDto> GetAllAsync(int pageNumber = 1, int pageSize = 10, string? searchTerm = null)
     {
         var query = _userManager.Users.AsQueryable();
@@ -70,7 +48,7 @@ public class UserService : IUserService
             query = query.Where(u => 
                 u.FirstName.Contains(searchTerm) || 
                 u.LastName.Contains(searchTerm) || 
-                u.Email!.Contains(searchTerm));
+                (u.Email != null && u.Email.Contains(searchTerm)));
         }
 
         var totalCount = query.Count();
@@ -90,7 +68,7 @@ public class UserService : IUserService
                 Id = user.Id,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Email = user.Email!,
+                Email = user.Email ?? string.Empty,
                 Role = role,
                 RoleDisplayName = GetRoleDisplayName(role),
                 IsActive = user.IsActive,
@@ -258,18 +236,6 @@ public class UserService : IUserService
         return result.Succeeded;
     }
 
-    public async Task<bool> ResetPasswordAsync(string email, string newPassword, string? currentUserId = null)
-    {
-        var user = await _userManager.FindByEmailAsync(email);
-        if (user == null) return false;
-
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        user.UpdatedAt = DateTime.UtcNow;
-        user.UpdatedBy = currentUserId;
-        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
-        return result.Succeeded;
-    }
-
     public async Task<bool> ToggleActiveStatusAsync(string id, string? currentUserId = null)
     {
         var user = await _userManager.FindByIdAsync(id);
@@ -282,59 +248,6 @@ public class UserService : IUserService
         return result.Succeeded;
     }
 
-    public async Task<List<UserDto>> GetByRoleAsync(string role)
-    {
-        var users = await _userManager.GetUsersInRoleAsync(role);
-        
-        var userDtos = new List<UserDto>();
-        foreach (var user in users)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-            var userRole = roles.FirstOrDefault() ?? UserRole.Staff.GetRoleName();
-            
-            userDtos.Add(new UserDto
-            {
-                Id = user.Id,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email!,
-                Role = userRole,
-                RoleDisplayName = GetRoleDisplayName(userRole),
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt,
-                LastLoginAt = user.LastLoginAt
-            });
-        }
-
-        return userDtos;
-    }
-
-    public async Task<List<string>> GetAllRolesAsync()
-    {
-        return _roleManager.Roles.Select(r => r.Name!).ToList();
-    }
-
-    public async Task<List<UserRoleDto>> GetUserRolesAsync()
-    {
-        var roles = _roleManager.Roles.ToList();
-        var userRoleDtos = new List<UserRoleDto>();
-        
-        foreach (var role in roles)
-        {
-            if (Enum.TryParse<UserRole>(role.Name, out var userRole))
-            {
-                userRoleDtos.Add(new UserRoleDto
-                {
-                    Value = (int)userRole,
-                    Name = role.Name!,
-                    DisplayName = userRole.GetDisplayName()
-                });
-            }
-        }
-        
-        return userRoleDtos;
-    }
-
     private string GetRoleDisplayName(string roleName)
     {
         if (Enum.TryParse<UserRole>(roleName, out var userRole))
@@ -342,31 +255,5 @@ public class UserService : IUserService
             return userRole.GetDisplayName();
         }
         return roleName;
-    }
-
-    public async Task<bool> RoleExistsAsync(string roleName)
-    {
-        return await _roleManager.RoleExistsAsync(roleName);
-    }
-
-    public async Task<bool> CreateRoleAsync(string roleName, string? description = null)
-    {
-        var role = new ApplicationRole
-        {
-            Name = roleName,
-            Description = description
-        };
-
-        var result = await _roleManager.CreateAsync(role);
-        return result.Succeeded;
-    }
-
-    public async Task<bool> DeleteRoleAsync(string roleName)
-    {
-        var role = await _roleManager.FindByNameAsync(roleName);
-        if (role == null) return false;
-
-        var result = await _roleManager.DeleteAsync(role);
-        return result.Succeeded;
     }
 } 

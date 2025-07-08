@@ -1,30 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService, LoginRequest } from '../services/authService';
+import { IAuthContext, AuthUser } from './interfaces/IAuthContext';
 
-export interface AuthUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-  lastLoginAt: string;
-  fullName: string;
-}
-
-interface AuthContextType {
-  user: AuthUser | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  logout: () => Promise<void>;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  loading: boolean;
-  error: string | null;
-  clearError: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<IAuthContext | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

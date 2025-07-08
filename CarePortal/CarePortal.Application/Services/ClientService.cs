@@ -3,6 +3,7 @@ using CarePortal.Application.Interfaces;
 using CarePortal.Application.Repository;
 using CarePortal.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using System.Linq;
 
 namespace CarePortal.Application.Services;
 
@@ -185,36 +186,5 @@ public class ClientService : IClientService
             AssignedStaffId = client.AssignedStaffId,
             AssignedStaffName = client.AssignedStaff != null ? client.AssignedStaff.FullName : null
         }).ToList();
-    }
-
-    public async Task<List<ClientDto>> GetActiveClientsAsync()
-    {
-        var clients = await _unitOfWork.Clients.GetActiveClientsAsync();
-
-        return clients.Select(client => new ClientDto
-        {
-            Id = client.Id,
-            FirstName = client.FirstName,
-            LastName = client.LastName,
-            DateOfBirth = client.DateOfBirth,
-            Address = client.Address,
-            PhoneNumber = client.PhoneNumber,
-            Email = client.Email,
-            CreatedAt = client.CreatedAt,
-            UpdatedAt = client.UpdatedAt,
-            IsActive = client.IsActive,
-            AssignedStaffId = client.AssignedStaffId,
-            AssignedStaffName = client.AssignedStaff != null ? client.AssignedStaff.FullName : null
-        }).ToList();
-    }
-
-    public async Task<int> GetTotalCountAsync()
-    {
-        return await _unitOfWork.Clients.CountAsync();
-    }
-
-    public async Task<int> GetActiveCountAsync()
-    {
-        return await _unitOfWork.Clients.GetActiveClientsCountAsync();
     }
 } 

@@ -18,6 +18,7 @@ public class JobTimeController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<JobTimeListDto>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] int? clientId = null)
     {
         if (IsAdmin)
@@ -28,6 +29,7 @@ public class JobTimeController : BaseController
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<JobTimeDto>> GetById(int id)
     {
         var job = await _jobTimeService.GetByIdAsync(id);
@@ -38,7 +40,7 @@ public class JobTimeController : BaseController
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<JobTimeDto>> Create([FromBody] CreateJobTimeDto dto)
     {
         if (!IsAdmin && dto.StaffId != CurrentUserId)
@@ -48,7 +50,7 @@ public class JobTimeController : BaseController
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<JobTimeDto>> Update(int id, [FromBody] UpdateJobTimeDto dto)
     {
         var job = await _jobTimeService.GetByIdAsync(id);
@@ -60,7 +62,7 @@ public class JobTimeController : BaseController
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Staff")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var job = await _jobTimeService.GetByIdAsync(id);

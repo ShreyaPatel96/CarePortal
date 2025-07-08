@@ -11,16 +11,6 @@ public class ClientRepository : GenericRepository<Client>, IClientRepository
     {
     }
 
-    public async Task<IEnumerable<Client>> GetActiveClientsAsync()
-    {
-        return await _dbSet
-            .Where(c => c.IsActive && !c.IsDeleted)
-            .Include(c => c.AssignedStaff)
-            .OrderBy(c => c.FirstName)
-            .ThenBy(c => c.LastName)
-            .ToListAsync();
-    }
-
     public async Task<IEnumerable<Client>> GetClientsByStaffAsync(string staffId)
     {
         return await _dbSet
@@ -61,5 +51,17 @@ public class ClientRepository : GenericRepository<Client>, IClientRepository
         return await _dbSet
             .Where(c => c.IsActive && !c.IsDeleted)
             .CountAsync();
+    }
+
+    public async Task<IEnumerable<Client>> GetPagedAsync(int pageNumber, int pageSize)
+    {
+        return await _dbSet
+            .Where(c => c.IsActive && !c.IsDeleted)
+            .Include(c => c.AssignedStaff)
+            .OrderBy(c => c.FirstName)
+            .ThenBy(c => c.LastName)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
     }
 } 

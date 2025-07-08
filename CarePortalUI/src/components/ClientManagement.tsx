@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useClient } from '../contexts/ClientContext';
 import { 
   UserCheck, 
   Plus, 
@@ -16,7 +16,8 @@ import {
   Loader2,
   Heart,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { ClientDto, CreateClientDto, UpdateClientDto } from '../services/clientService';
 import { userService, UserDto } from '../services/userService';
@@ -25,12 +26,12 @@ import ErrorDisplay from './ErrorDisplay';
 import { useToast } from '../hooks/useToast';
 
 const ClientManagement: React.FC = () => {
-  const { clients, addClient, updateClient, deleteClient, refreshClients, loading, error } = useData();
+  const { clients, addClient, updateClient, deleteClient, refreshClients, loading, error } = useClient();
   const { showSuccess, showError } = useToast();
   
   // State for pagination and search
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(9);
+  const [pageSize] = useState(9);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
@@ -51,9 +52,6 @@ const ClientManagement: React.FC = () => {
     address: '',
     phoneNumber: '',
     email: '',
-    emergencyContact: '',
-    emergencyPhone: '',
-    medicalNotes: '',
     assignedStaffId: '',
     isActive: true
   });
@@ -74,17 +72,13 @@ const ClientManagement: React.FC = () => {
   };
 
   // Handle phone number input change with validation
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, isEmergency: boolean = false) => {
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement> ) => {
     const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
     const maxLength = 10;
     
     if (value.length <= maxLength) {
-      if (isEmergency) {
-        setFormData({...formData, emergencyPhone: value});
-      } else {
-        setFormData({...formData, phoneNumber: value});
+      setFormData({...formData, phoneNumber: value});
         setPhoneError('');
-      }
     }
   };
 
@@ -102,12 +96,12 @@ const ClientManagement: React.FC = () => {
     return isValid;
   };
 
-  // Debounce search term
+  // Enhanced debounced search with better performance
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
       setPageNumber(1); // Reset to first page when searching
-    }, 500);
+    }, 300); // Reduced debounce time for better responsiveness
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -117,25 +111,57 @@ const ClientManagement: React.FC = () => {
     loadStaffUsers();
   }, []);
 
-  // Filter clients based on search term
-  const filteredClients = clients.filter(client => {
-    if (!debouncedSearchTerm) return true;
-    const searchLower = debouncedSearchTerm.toLowerCase();
-    return (
-      client.firstName.toLowerCase().includes(searchLower) ||
-      client.lastName.toLowerCase().includes(searchLower) ||
-      client.email.toLowerCase().includes(searchLower) ||
-      client.phoneNumber.includes(searchLower)
-    );
-  });
+  // Helper function to get staff name - moved before useMemo to avoid hoisting issues
+  const getStaffName = (staffId?: string) => {
+    if (!staffId) return 'No staff assigned';
+    const staff = staffUsers.find(u => u.id === staffId);
+    return staff ? staff.firstName + ' ' + staff.lastName : 'Unknown Staff';
+  };
 
-  // Paginate filtered clients
-  const paginatedClients = filteredClients.slice(
-    (pageNumber - 1) * pageSize,
-    pageNumber * pageSize
-  );
+  // Enhanced client filtering with better search logic
+  const filteredClients = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) {
+      return clients;
+    }
+
+    const searchLower = debouncedSearchTerm.toLowerCase().trim();
+    const searchTerms = searchLower.split(' ').filter(term => term.length > 0);
+
+    const filtered = clients.filter(client => {
+      // Create a searchable string from all client fields
+      const searchableText = [
+        client.firstName,
+        client.lastName,
+        client.email,
+        client.phoneNumber,
+        client.address,
+        getStaffName(client.assignedStaffId)
+      ].join(' ').toLowerCase();
+
+      // Check if all search terms are found in the searchable text
+      const matches = searchTerms.every(term => searchableText.includes(term));
+      return matches;
+    });
+
+    return filtered;
+  }, [clients, debouncedSearchTerm, staffUsers]);
+
+  // Enhanced pagination with better performance
+  const paginatedClients = useMemo(() => {
+    const startIndex = (pageNumber - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredClients.slice(startIndex, endIndex);
+  }, [filteredClients, pageNumber, pageSize]);
 
   const totalCount = filteredClients.length;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  // Clear search function
+  const clearSearch = () => {
+    setSearchTerm('');
+    setDebouncedSearchTerm('');
+    setPageNumber(1);
+  };
 
   const loadStaffUsers = async () => {
     try {
@@ -154,9 +180,7 @@ const ClientManagement: React.FC = () => {
       setRefreshing(true);
       
       // Clear all filters
-      setSearchTerm('');
-      setDebouncedSearchTerm('');
-      setPageNumber(1);
+      clearSearch();
       
       // Refresh clients data
       await refreshClients();
@@ -192,9 +216,6 @@ const ClientManagement: React.FC = () => {
           address: formData.address,
           phoneNumber: formData.phoneNumber,
           email: formData.email,
-          emergencyContact: formData.emergencyContact,
-          emergencyPhone: formData.emergencyPhone,
-          medicalNotes: formData.medicalNotes,
           assignedStaffId: formData.assignedStaffId || undefined,
           isActive: formData.isActive
         };
@@ -241,9 +262,6 @@ const ClientManagement: React.FC = () => {
         address: client.address,
         phoneNumber: client.phoneNumber,
         email: client.email,
-        emergencyContact: client.emergencyContact,
-        emergencyPhone: client.emergencyPhone,
-        medicalNotes: client.medicalNotes,
         assignedStaffId: client.assignedStaffId || undefined,
         isActive: !client.isActive // Toggle the active status
       };
@@ -267,9 +285,6 @@ const ClientManagement: React.FC = () => {
       address: client.address,
       phoneNumber: client.phoneNumber,
       email: client.email,
-      emergencyContact: client.emergencyContact,
-      emergencyPhone: client.emergencyPhone,
-      medicalNotes: client.medicalNotes,
       assignedStaffId: client.assignedStaffId || '',
       isActive: client.isActive
     });
@@ -284,21 +299,10 @@ const ClientManagement: React.FC = () => {
       address: '',
       phoneNumber: '',
       email: '',
-      emergencyContact: '',
-      emergencyPhone: '',
-      medicalNotes: '',
       assignedStaffId: '',
       isActive: true
     });
   };
-
-  const getStaffName = (staffId?: string) => {
-    if (!staffId) return 'No staff assigned';
-    const staff = staffUsers.find(u => u.id === staffId);
-    return staff ? staff.fullName : 'Unknown Staff';
-  };
-
-  const totalPages = Math.ceil(totalCount / pageSize);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -354,17 +358,27 @@ const ClientManagement: React.FC = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Search clients by name or email..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search clients by name, email, phone, address, or staff..."
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Clear search"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Clients Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paginatedClients.map((client) => (
+      {paginatedClients.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedClients.map((client) => (
           <div key={client.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -374,7 +388,7 @@ const ClientManagement: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">{client.fullName}</h3>
+                  <h3 className="font-semibold text-gray-900">{client.firstName + ' ' + client.lastName}</h3>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                     client.isActive 
                       ? 'bg-green-100 text-green-800' 
@@ -448,10 +462,34 @@ const ClientManagement: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm p-6 text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <Search size={48} className="mx-auto" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {debouncedSearchTerm ? 'No clients found' : 'No clients available'}
+          </h3>
+          <p className="text-gray-600">
+            {debouncedSearchTerm 
+              ? `No clients match your search for "${debouncedSearchTerm}". Try adjusting your search terms.`
+              : 'There are no clients in the system yet. Add your first client to get started.'
+            }
+          </p>
+          {debouncedSearchTerm && (
+            <button
+              onClick={clearSearch}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalPages > 1 && totalCount > 0 && (
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">
@@ -581,7 +619,7 @@ const ClientManagement: React.FC = () => {
                   <option value="">No staff assigned</option>
                   {staffUsers.map((staff) => (
                     <option key={staff.id} value={staff.id}>
-                      {staff.fullName}
+                      {staff.firstName + ' ' + staff.lastName}
                     </option>
                   ))}
                 </select>
@@ -650,7 +688,7 @@ const ClientManagement: React.FC = () => {
                     </span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{clientToDelete.fullName}</h3>
+                    <h3 className="font-semibold text-gray-900">{clientToDelete.firstName + ' ' + clientToDelete.lastName}</h3>
                     <p className="text-sm text-gray-600">{clientToDelete.email}</p>
                   </div>
                 </div>

@@ -4,12 +4,7 @@ namespace CarePortal.Application.Interfaces;
 
 public interface IFileUploadService
 {
-    Task<string> UploadPhotoAsync(IFormFile photo);
-    Task<string> UploadFileAsync(IFormFile file);
-    Task<bool> DeletePhotoAsync(string photoPath);
-    Task<bool> DeleteFileAsync(string filePath);
-    string GetPhotoUrl(string photoPath);
-    string GetFileUrl(string filePath);
-    string GetFullFilePath(string fileName);
-    bool FileExists(string fileName);
+    Task<string> UploadFileAsync(IFormFile file, string uploadType = "document");
+    string DownloadFileAsync(string fileName, string uploadType = "document");
+    Task<bool> DeleteFileAsync(string fileName, string uploadType = "document");
 } 

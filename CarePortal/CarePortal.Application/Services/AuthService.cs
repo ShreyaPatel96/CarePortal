@@ -2,6 +2,7 @@ using CarePortal.Application.DTOs;
 using CarePortal.Application.Interfaces;
 using CarePortal.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 
 namespace CarePortal.Application.Services;
 
@@ -10,15 +11,18 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ITokenService _tokenService;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _tokenService = tokenService;
+        _configuration = configuration;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(LoginRequestDto request)
@@ -53,7 +57,11 @@ public class AuthService : IAuthService
         // Generate tokens
         var accessToken = _tokenService.GenerateJwtToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
-        var expiresAt = DateTime.UtcNow.AddMinutes(60); // Should match JWT expiration
+        
+        // Get expiration time from configuration
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var expiresInMinutes = int.Parse(jwtSettings["ExpiresInMinutes"] ?? "60");
+        var expiresAt = DateTime.UtcNow.AddMinutes(expiresInMinutes);
 
         // Save refresh token (in a real app, you'd store this in a database)
         await _tokenService.SaveRefreshTokenAsync(user.Id, refreshToken, expiresAt);
@@ -94,11 +102,6 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<bool> ValidateTokenAsync(string token)
-    {
-        return true; // Placeholder implementation
-    }
-
     public async Task<LogoutResponseDto> LogoutAsync(string userId)
     {
         try
@@ -120,7 +123,7 @@ public class AuthService : IAuthService
             return new LogoutResponseDto
             {
                 Success = false,
-                Message = "An error occurred during logout"
+                Message = ex.Message
             };
         }
     }

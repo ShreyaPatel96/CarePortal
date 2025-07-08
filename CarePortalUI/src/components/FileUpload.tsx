@@ -28,7 +28,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     if (file) {
       // Validate file size
       if (file.size > maxSizeMB * 1024 * 1024) {
-        alert(`File size must be less than ${maxSizeMB}MB`);
         return;
       }
       onFileSelect(file);
@@ -54,7 +53,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     if (file) {
       // Validate file size
       if (file.size > maxSizeMB * 1024 * 1024) {
-        alert(`File size must be less than ${maxSizeMB}MB`);
         return;
       }
       onFileSelect(file);

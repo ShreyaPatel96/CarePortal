@@ -18,6 +18,7 @@ public class DashboardController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<DashboardDto>> GetDashboard()
     {
         if (IsAdmin)
@@ -27,6 +28,7 @@ public class DashboardController : BaseController
     }
 
     [HttpGet("stats")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<DashboardStatsDto>> GetStats()
     {
         if (IsAdmin)
@@ -36,6 +38,7 @@ public class DashboardController : BaseController
     }
 
     [HttpGet("recent-activities")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<List<RecentActivityDto>>> GetRecentActivities([FromQuery] int count = 10)
     {
         return Ok(await _dashboardService.GetRecentActivitiesAsync(count));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useUser } from '../contexts/UserContext';
 import { 
   Users, 
   Plus, 
@@ -20,8 +20,7 @@ import {
   AlertTriangle,
   RefreshCw
 } from 'lucide-react';
-import { User } from '../services/authService';
-import { CreateUserDto, UpdateUserDto, ChangePasswordDto } from '../services/userService';
+import { UserDto, CreateUserDto, UpdateUserDto, ChangePasswordDto } from '../services/userService';
 import { userService } from '../services/userService';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorDisplay from './ErrorDisplay';
@@ -29,7 +28,17 @@ import { useEnumMapping } from '../hooks/useEnumMapping';
 import { useToast } from '../hooks/useToast';
 
 const UserManagement: React.FC = () => {
-  const { users, addUser, updateUser, deleteUser, loading, error, clearError, toggleUserStatus, refreshUsers } = useData();
+  const { 
+    users, 
+    addUser, 
+    updateUser, 
+    deleteUser, 
+    loading, 
+    error, 
+    clearError, 
+    toggleUserStatus, 
+    refreshUsers 
+  } = useUser();
   const { showSuccess, showError } = useToast();
   
   // Use enum mapping for user roles
@@ -39,7 +48,7 @@ const UserManagement: React.FC = () => {
   
   // State for pagination and search
   const [pageNumber, setPageNumber] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -49,9 +58,9 @@ const UserManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [selectedUserForPassword, setSelectedUserForPassword] = useState<User | null>(null);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserDto | null>(null);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<UserDto | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserDto | null>(null);
 
   // State for forms
   const [formData, setFormData] = useState<CreateUserDto>({
@@ -78,7 +87,6 @@ const UserManagement: React.FC = () => {
   const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
-  const [changePasswordSuccess, setChangePasswordSuccess] = useState<string | null>(null);
 
   // Update formData role when userRoles are loaded
   useEffect(() => {
@@ -100,12 +108,11 @@ const UserManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch users when search changes (load all users initially)
+  // Fetch users when search changes
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Load all users with search term
-        await refreshUsers(1, 1000, debouncedSearchTerm || undefined);
+        await refreshUsers(debouncedSearchTerm || undefined);
       } catch (error) {
         console.error('Failed to fetch users:', error);
       }
@@ -120,7 +127,7 @@ const UserManagement: React.FC = () => {
   }, [selectedRole, selectedStatus]);
 
   // Apply client-side filtering for role and status
-  const filteredUsers = users.filter((user: User) => {
+  const filteredUsers = users.filter((user: UserDto) => {
     const matchesRole = selectedRole === 'all' || user.role.toLowerCase() === selectedRole.toLowerCase();
     
     const matchesStatus = selectedStatus === 'all' || 
@@ -204,6 +211,9 @@ const UserManagement: React.FC = () => {
       setDebouncedSearchTerm('');
       clearError(); // Clear any existing errors
       
+      // Refresh all users
+      await refreshUsers();
+      
       // Add a small delay to show the refresh animation
       await new Promise(resolve => setTimeout(resolve, 500));
       showSuccess('User data refreshed successfully');
@@ -260,10 +270,8 @@ const UserManagement: React.FC = () => {
           password: formData.password, // Include password for new users
           role: formData.role,
           isActive: formData.isActive ?? true
-          // Remove lastLoginAt and fullName as they're not expected by backend
         };
         
-        console.log('Creating user with data:', userData);
         await addUser(userData);
         showSuccess(`User ${formData.firstName} ${formData.lastName} created successfully`);
       }
@@ -297,7 +305,7 @@ const UserManagement: React.FC = () => {
       await deleteUser(userToDelete.id);
       setShowDeleteModal(false);
       setUserToDelete(null);
-      showSuccess(`User ${userToDelete.fullName} deleted successfully`);
+      showSuccess(`User ${userToDelete.firstName + ' ' + userToDelete.lastName} deleted successfully`);
     } catch (err: any) {
       console.error('Failed to delete user:', err);
       const errorMessage = err.message || 'Failed to delete user. Please try again.';
@@ -312,12 +320,12 @@ const UserManagement: React.FC = () => {
     setUserToDelete(null);
   };
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = async (user: UserDto) => {
     try {
       setOperationLoading(true);
       await toggleUserStatus(user.id);
       const newStatus = user.isActive ? 'deactivated' : 'activated';
-      showSuccess(`User ${user.fullName} ${newStatus} successfully`);
+      showSuccess(`User ${user.firstName + ' ' + user.lastName} ${newStatus} successfully`);
     } catch (err: any) {
       console.error('Failed to toggle user status:', err);
       const errorMessage = err.message || 'Failed to update user status. Please try again.';
@@ -359,8 +367,7 @@ const UserManagement: React.FC = () => {
       setCurrentPasswordError(null);
       setNewPasswordError(null);
       setChangePasswordError(null);
-      setChangePasswordSuccess('Password changed successfully');
-      showSuccess(`Password for ${selectedUserForPassword.fullName} changed successfully`);
+      showSuccess(`Password for ${selectedUserForPassword.firstName + ' ' + selectedUserForPassword.lastName} changed successfully`);
       
     } catch (err: any) {
       console.error('Failed to change password:', err);
@@ -394,7 +401,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleEdit = (user: User) => {
+  const handleEdit = (user: UserDto) => {
     setEditingUser(user);
     setFormData({
       firstName: user.firstName,
@@ -409,7 +416,7 @@ const UserManagement: React.FC = () => {
     setShowModal(true);
   };
 
-  const handlePasswordChange = (user: User) => {
+  const handlePasswordChange = (user: UserDto) => {
     setSelectedUserForPassword(user);
     setPasswordData({ currentPassword: '', newPassword: '' });
     setShowPasswordModal(true);
@@ -666,7 +673,7 @@ const UserManagement: React.FC = () => {
                           </span>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                          <div className="text-sm font-medium text-gray-900">{user.firstName + ' ' + user.lastName}</div>
                           <div className="text-sm text-gray-500 flex items-center">
                             <Mail size={14} className="mr-1" />
                             {user.email}
@@ -790,11 +797,11 @@ const UserManagement: React.FC = () => {
           <div className="bg-white px-6 py-3 border-t border-gray-200">
             <div className="flex items-center justify-between">
               {/* Page info and page size selector */}
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-700">
-                  Showing {totalCount > 0 ? ((pageNumber - 1) * pageSize) + 1 : 0} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} results
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-700">
+                    Showing {totalCount > 0 ? ((pageNumber - 1) * pageSize) + 1 : 0} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} results
+                  </div>
                 </div>
-              </div>
 
               {/* Enhanced pagination controls */}
               <div className="flex items-center space-x-1">
@@ -1033,15 +1040,8 @@ const UserManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
-              Change Password for {selectedUserForPassword.fullName}
+              Change Password for {selectedUserForPassword.firstName + ' ' + selectedUserForPassword.lastName}
             </h2>
-            
-            {/* Success message */}
-            {changePasswordSuccess && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-600">{changePasswordSuccess}</p>
-              </div>
-            )}
             
             {/* Global error message */}
             {changePasswordError && (
@@ -1145,7 +1145,7 @@ const UserManagement: React.FC = () => {
             
             <div className="mb-6">
               <p className="text-gray-700">
-                Are you sure you want to delete <span className="font-semibold">{userToDelete.fullName}</span>?
+                Are you sure you want to delete <span className="font-semibold">{userToDelete.firstName + ' ' + userToDelete.lastName}</span>?
               </p>
               <p className="text-sm text-gray-500 mt-2">
                 This will permanently remove the user account and all associated data.

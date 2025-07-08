@@ -16,8 +16,6 @@ public class ClientDto
     public bool IsActive { get; set; }
     public string? AssignedStaffId { get; set; }
     public string? AssignedStaffName { get; set; }
-    public string FullName => $"{FirstName} {LastName}".Trim();
-    public int Age => DateTime.Today.Year - DateOfBirth.Year - (DateTime.Today < DateOfBirth.AddYears(DateTime.Today.Year - DateOfBirth.Year) ? 1 : 0);
 }
 
 public class CreateClientDto
@@ -25,26 +23,19 @@ public class CreateClientDto
     [Required]
     [StringLength(100)]
     public string FirstName { get; set; } = string.Empty;
-    
     [Required]
     [StringLength(100)]
     public string LastName { get; set; } = string.Empty;
-    
     [Required]
     public DateTime DateOfBirth { get; set; }
-    
     [StringLength(500)]
     public string Address { get; set; } = string.Empty;
-    
     [StringLength(20)]
     public string PhoneNumber { get; set; } = string.Empty;
-    
     [EmailAddress]
     [StringLength(100)]
     public string Email { get; set; } = string.Empty;
-    
     public string? AssignedStaffId { get; set; }
-    
     public bool IsActive { get; set; } = true;
 }
 
@@ -52,24 +43,17 @@ public class UpdateClientDto
 {
     [StringLength(100)]
     public string? FirstName { get; set; }
-    
     [StringLength(100)]
     public string? LastName { get; set; }
-    
     public DateTime? DateOfBirth { get; set; }
-    
     [StringLength(500)]
     public string? Address { get; set; }
-    
     [StringLength(20)]
     public string? PhoneNumber { get; set; }
-    
     [EmailAddress]
     [StringLength(100)]
     public string? Email { get; set; }
-    
     public string? AssignedStaffId { get; set; }
-    
     public bool? IsActive { get; set; }
 }
 

@@ -3,7 +3,6 @@ using CarePortal.Application.Interfaces;
 using CarePortal.Application.Repository;
 using CarePortal.Domain.Entities;
 using CarePortal.Domain.Enums;
-using Microsoft.AspNetCore.Http;
 
 namespace CarePortal.Application.Services;
 
@@ -179,144 +178,8 @@ public class IncidentService : IIncidentService
         var incident = await _unitOfWork.Incidents.GetByIdAsync(id);
         if (incident == null) return false;
 
-        // Delete associated photo if exists
-        if (!string.IsNullOrEmpty(incident.FileName))
-        {
-            await _fileUploadService.DeletePhotoAsync(incident.FileName);
-        }
-
-        await _unitOfWork.Incidents.DeleteAsync(incident);
-        return true;
-    }
-
-    public async Task<bool> ResolveIncidentAsync(int id, string resolvedBy, string resolutionNotes, string? currentUserId = null)
-    {
-        var incident = await _unitOfWork.Incidents.GetByIdAsync(id);
-        if (incident == null) return false;
-
-        incident.Status = IncidentStatus.Resolved;
-        incident.UpdatedAt = DateTime.UtcNow;
-        incident.UpdatedBy = currentUserId;
-
+        incident.IsDeleted = true;
         await _unitOfWork.Incidents.UpdateAsync(incident);
         return true;
-    }
-
-    public async Task<List<IncidentDto>> GetByClientAsync(int clientId)
-    {
-        var incidents = await _unitOfWork.Incidents.GetIncidentsByClientAsync(clientId);
-
-        return incidents.Select(incident => new IncidentDto
-        {
-            Id = incident.Id,
-            ClientId = incident.ClientId,
-            ClientName = incident.Client?.FullName ?? "Unknown Client",
-            StaffId = incident.StaffId,
-            StaffName = incident.Staff?.FullName ?? "Unknown Staff",
-            Title = incident.Title,
-            Description = incident.Description,
-            IncidentDate = incident.IncidentDate,
-            IncidentTime = incident.IncidentTime,
-            Location = incident.Location,
-            FileName = incident.FileName,
-            IsActive = incident.IsActive,
-            Status = incident.Status,
-            Severity = incident.Severity,
-            CreatedAt = incident.CreatedAt,
-            UpdatedAt = incident.UpdatedAt
-        }).ToList();
-    }
-
-    public async Task<List<IncidentDto>> GetByStaffAsync(string staffId)
-    {
-        var incidents = await _unitOfWork.Incidents.GetIncidentsByStaffAsync(staffId);
-
-        return incidents.Select(incident => new IncidentDto
-        {
-            Id = incident.Id,
-            ClientId = incident.ClientId,
-            ClientName = incident.Client?.FullName ?? "Unknown Client",
-            StaffId = incident.StaffId,
-            StaffName = incident.Staff?.FullName ?? "Unknown Staff",
-            Title = incident.Title,
-            Description = incident.Description,
-            IncidentDate = incident.IncidentDate,
-            IncidentTime = incident.IncidentTime,
-            Location = incident.Location,
-            FileName = incident.FileName,
-            IsActive = incident.IsActive,
-            Status = incident.Status,
-            Severity = incident.Severity,
-            CreatedAt = incident.CreatedAt,
-            UpdatedAt = incident.UpdatedAt
-        }).ToList();
-    }
-
-    public async Task<List<IncidentDto>> GetByDateRangeAsync(DateTime startDate, DateTime endDate)
-    {
-        var incidents = await _unitOfWork.Incidents.GetIncidentsByDateRangeAsync(startDate, endDate);
-
-        return incidents.Select(incident => new IncidentDto
-        {
-            Id = incident.Id,
-            ClientId = incident.ClientId,
-            ClientName = incident.Client?.FullName ?? "Unknown Client",
-            StaffId = incident.StaffId,
-            StaffName = incident.Staff?.FullName ?? "Unknown Staff",
-            Title = incident.Title,
-            Description = incident.Description,
-            IncidentDate = incident.IncidentDate,
-            IncidentTime = incident.IncidentTime,
-            Location = incident.Location,
-            FileName = incident.FileName,
-            IsActive = incident.IsActive,
-            Status = incident.Status,
-            Severity = incident.Severity,
-            CreatedAt = incident.CreatedAt,
-            UpdatedAt = incident.UpdatedAt
-        }).ToList();
-    }
-
-    public async Task<IncidentStatsDto> GetStatsAsync()
-    {
-        var totalIncidents = await _unitOfWork.Incidents.CountAsync();
-        var activeIncidents = await _unitOfWork.Incidents.GetActiveIncidentsCountAsync();
-        var openIncidents = await _unitOfWork.Incidents.GetIncidentsCountByStatusAsync(IncidentStatus.Open);
-        var resolvedIncidents = await _unitOfWork.Incidents.GetIncidentsCountByStatusAsync(IncidentStatus.Resolved);
-
-        return new IncidentStatsDto
-        {
-            TotalIncidents = totalIncidents,
-            ActiveIncidents = activeIncidents,
-            OpenIncidents = openIncidents,
-            ResolvedIncidents = resolvedIncidents
-        };
-    }
-
-    public async Task<IncidentStatsDto> GetStatsByDateRangeAsync(DateTime startDate, DateTime endDate)
-    {
-        var incidents = await _unitOfWork.Incidents.GetIncidentsByDateRangeAsync(startDate, endDate);
-        var totalIncidents = incidents.Count();
-        var activeIncidents = incidents.Count(i => i.IsActive);
-        var openIncidents = incidents.Count(i => i.Status == IncidentStatus.Open);
-        var resolvedIncidents = incidents.Count(i => i.Status == IncidentStatus.Resolved);
-
-        return new IncidentStatsDto
-        {
-            TotalIncidents = totalIncidents,
-            ActiveIncidents = activeIncidents,
-            OpenIncidents = openIncidents,
-            ResolvedIncidents = resolvedIncidents
-        };
-    }
-
-    public async Task<string> UploadPhotoAsync(IFormFile photo)
-    {
-        return await _fileUploadService.UploadPhotoAsync(photo);
-    }
-
-    public string GetPhotoUrl(string photoPath)
-    {
-        return _fileUploadService.GetPhotoUrl(photoPath);
     }
 } 

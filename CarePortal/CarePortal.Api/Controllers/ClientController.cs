@@ -18,6 +18,7 @@ public class ClientController : BaseController
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ClientListDto>> GetAll(
         [FromQuery] int pageNumber = 1, 
         [FromQuery] int pageSize = 10, 
@@ -48,6 +49,7 @@ public class ClientController : BaseController
     }
 
     [HttpGet("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ClientDto>> GetById(int id)
     {
         if (id <= 0)

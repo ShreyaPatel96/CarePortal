@@ -1,6 +1,7 @@
 using CarePortal.Application.DTOs;
 using CarePortal.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CarePortal.Api.Controllers;
@@ -17,184 +18,107 @@ public class FileController : BaseController
         _fileUploadService = fileUploadService;
     }
 
-    [HttpPost("upload/incident")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<ActionResult<FileUploadResponseDto>> UploadIncidentFile([FromForm] UploadFileDto dto)
+    [HttpPost("upload")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<FileInfoDto>> UploadFile(IFormFile file, string uploadType = "document")
     {
         try
         {
-            var fileName = await _fileUploadService.UploadPhotoAsync(dto.File);
-            var fileUrl = _fileUploadService.GetPhotoUrl(fileName);
-            
-            var response = new FileUploadResponseDto
+            // Validate upload type
+            if (!IsValidUploadType(uploadType))
             {
-                FileName = fileName,
-                FileUrl = fileUrl,
-                OriginalFileName = dto.File.FileName,
-                FileSize = dto.File.Length,
-                FileType = Path.GetExtension(dto.File.FileName).ToLowerInvariant()
-            };
-            
-            return Ok(response);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while uploading the incident file" });
-        }
-    }
-
-    [HttpGet("download/incident/{fileName}")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> DownloadIncidentFile(string fileName)
-    {
-        try
-        {
-            var incidentPath = Path.Combine("C:\\CarePortalincidentUploadFile", fileName);
-            
-            if (!System.IO.File.Exists(incidentPath))
-            {
-                return NotFound(new { error = "Incident file not found" });
+                return BadRequest(new { error = "Invalid upload type. Valid types are 'document' and 'incident'" });
             }
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(incidentPath);
-            var contentType = GetContentType(fileName);
-            
-            return File(fileBytes, contentType, fileName);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while downloading the incident file" });
-        }
-    }
-
-    [HttpDelete("incident/{fileName}")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> DeleteIncidentFile(string fileName)
-    {
-        try
-        {
-            var result = await _fileUploadService.DeletePhotoAsync(fileName);
-            if (!result)
-            {
-                return NotFound(new { error = "Incident file not found" });
-            }
-            
-            return NoContent();
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while deleting the incident file" });
-        }
-    }
-
-    [HttpPost("upload/document")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<ActionResult<FileUploadResponseDto>> UploadDocumentFile([FromForm] UploadFileDto dto)
-    {
-        try
-        {
-            var fileName = await _fileUploadService.UploadFileAsync(dto.File);
-            var fileUrl = _fileUploadService.GetFileUrl(fileName);
-
-            var response = new FileUploadResponseDto
-            {
-                FileName = fileName,
-                FileUrl = fileUrl,
-                OriginalFileName = dto.File.FileName,
-                FileSize = dto.File.Length,
-                FileType = Path.GetExtension(dto.File.FileName).ToLowerInvariant()
-            };
-
-            return Ok(response);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while uploading the incident file" });
-        }
-    }
-
-    [HttpGet("download/document/{fileName}")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> DownloadDocumentFile(string fileName)
-    {
-        try
-        {
-            var incidentPath = Path.Combine("C:\\CarePortalDocumentUploadFile", fileName);
-
-            if (!System.IO.File.Exists(incidentPath))
-            {
-                return NotFound(new { error = "Incident file not found" });
-            }
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(incidentPath);
-            var contentType = GetContentType(fileName);
-
-            return File(fileBytes, contentType, fileName);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while downloading the incident file" });
-        }
-    }
-
-    [HttpDelete("document/{fileName}")]
-    [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> DeleteDocumentFile(string fileName)
-    {
-        try
-        {
-            var result = await _fileUploadService.DeletePhotoAsync(fileName);
-            if (!result)
-            {
-                return NotFound(new { error = "Incident file not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "An error occurred while deleting the incident file" });
-        }
-    }
-
-    [HttpGet("info/{fileName}")]
-    [Authorize(Roles = "Admin,Staff")]
-    public ActionResult<FileInfoDto> GetFileInfo(string fileName)
-    {
-        try
-        {
-            if (!_fileUploadService.FileExists(fileName))
-            {
-                return NotFound(new { error = "File not found" });
-            }
-
-            var fullPath = _fileUploadService.GetFullFilePath(fileName);
-            var fileInfo = new FileInfo(fullPath);
+            var fileName = await _fileUploadService.UploadFileAsync(file, uploadType);
             
             var response = new FileInfoDto
             {
                 FileName = fileName,
-                FileUrl = _fileUploadService.GetFileUrl(fileName),
-                FileSize = fileInfo.Length,
-                FileType = Path.GetExtension(fileName).ToLowerInvariant(),
-                CreatedAt = fileInfo.CreationTime,
-                LastModified = fileInfo.LastWriteTime
+                OriginalFileName = file.FileName,
+                FileSize = file.Length,
+                FileType = Path.GetExtension(file.FileName).ToLowerInvariant(),
+                UploadType = uploadType,
+                CreatedAt = DateTime.UtcNow,
+                LastModified = DateTime.UtcNow
             };
             
             return Ok(response);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception)
         {
-            return StatusCode(500, new { error = "An error occurred while getting file information" });
+            var fileTypeText = uploadType == "incident" ? "incident" : "document";
+            return StatusCode(500, new { error = $"An error occurred while uploading the {fileTypeText} file" });
         }
+    }
+
+    [HttpGet("download")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DownloadFile(string fileName, string uploadType = "document")
+    {
+        try
+        {
+            // Validate upload type
+            if (!IsValidUploadType(uploadType))
+            {
+                return BadRequest(new { error = "Invalid upload type. Valid types are 'document' and 'incident'" });
+            }
+
+            var filePath = _fileUploadService.DownloadFileAsync(fileName, uploadType);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                var fileTypeText = uploadType == "incident" ? "incident" : "document";
+                return NotFound(new { error = $"{fileTypeText} file not found" });
+            }
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var contentType = GetContentType(fileName);
+            
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception)
+        {
+            var fileTypeText = uploadType == "incident" ? "incident" : "document";
+            return StatusCode(500, new { error = $"An error occurred while downloading the {fileTypeText} file" });
+        }
+    }
+
+    [HttpDelete("{fileName}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteFile(string fileName, string uploadType = "document")
+    {
+        try
+        {
+            // Validate upload type
+            if (!IsValidUploadType(uploadType))
+            {
+                return BadRequest(new { error = "Invalid upload type. Valid types are 'document' and 'incident'" });
+            }
+
+            var result = await _fileUploadService.DeleteFileAsync(fileName, uploadType);
+            if (!result)
+            {
+                var fileTypeText = uploadType == "incident" ? "incident" : "document";
+                return NotFound(new { error = $"{fileTypeText} file not found" });
+            }
+            
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            var fileTypeText = uploadType == "incident" ? "incident" : "document";
+            return StatusCode(500, new { error = $"An error occurred while deleting the {fileTypeText} file" });
+        }
+    }
+
+    private bool IsValidUploadType(string uploadType)
+    {
+        return uploadType?.ToLowerInvariant() is "document" or "incident";
     }
 
     private string GetContentType(string fileName)

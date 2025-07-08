@@ -28,6 +28,8 @@ export interface CreateDocumentRequest {
   description: string;
   deadline: string;
   isActive?: boolean;
+  fileName?: string;
+  fileType?: string;
 }
 
 export interface UpdateDocumentRequest {
@@ -36,6 +38,8 @@ export interface UpdateDocumentRequest {
   deadline?: string;
   status?: string;
   isActive?: boolean;
+  fileName?: string;
+  fileType?: string;
 }
 
 export interface UploadDocumentRequest {
@@ -43,11 +47,7 @@ export interface UploadDocumentRequest {
   fileType: string;
 }
 
-export interface LinkFileToDocumentRequest {
-  fileName: string;
-  fileSize: number;
-  fileType: string;
-}
+
 
 export interface DocumentUploadResponse {
   fileName: string;
@@ -98,10 +98,7 @@ export class DocumentService {
     return apiService.put<Document>(`/Document/${id}`, document);
   }
 
-  // Link uploaded file to document
-  async linkFileToDocument(id: number, fileData: LinkFileToDocumentRequest): Promise<Document> {
-    return apiService.put<Document>(`/Document/${id}/link-file`, fileData);
-  }
+
 
   // Delete document
   async deleteDocument(id: number): Promise<void> {

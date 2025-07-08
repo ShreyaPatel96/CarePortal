@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useData } from '../contexts/DataContext';
+import { useClient } from '../contexts/ClientContext';
+import { useJobTime } from '../contexts/JobTimeContext';
+import { useIncident } from '../contexts/IncidentContext';
+import { useDocument } from '../contexts/DocumentContext';
+import { useUser } from '../contexts/UserContext';
 import { DashboardStats, RecentActivity } from '../services/dashboardService';
 import { 
   Users, 
@@ -50,15 +54,38 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user, isAdmin } = useAuth();
-  const { clients, jobTimes, incidents, documents, users, loading, error } = useData();
+  const { clients, loading: clientsLoading, error: clientsError, refreshClients } = useClient();
+  const { jobTimes, loading: jobTimesLoading, error: jobTimesError, refreshJobTimes } = useJobTime();
+  const { incidents, loading: incidentsLoading, error: incidentsError, refreshIncidents } = useIncident();
+  const { documents, loading: documentsLoading, error: documentsError, refreshDocuments } = useDocument();
+  const { users, loading: usersLoading, error: usersError, refreshUsers } = useUser();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+
+  // Refresh all data when component mounts or when user navigates back to dashboard
+  useEffect(() => {
+    const refreshAllData = async () => {
+      try {
+        await Promise.all([
+          refreshClients(),
+          refreshJobTimes(),
+          refreshIncidents(),
+          refreshDocuments(),
+          refreshUsers()
+        ]);
+      } catch (error) {
+        console.error('❌ Dashboard - Failed to refresh data:', error);
+      } 
+    };
+
+    refreshAllData();
+  }, []); // Only run once when component mounts
 
   useEffect(() => {
     // Calculate dashboard stats from DataContext data
     const calculateStats = () => {
       // Don't calculate stats if still loading or if any required data is missing
-      if (loading) {
+      if (clientsLoading || jobTimesLoading || incidentsLoading || documentsLoading || usersLoading) {
         return;
       }
 
@@ -107,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       const activeUsers = usersArray.filter(u => u.isActive).length;
       const totalUsers = usersArray.length;
 
-      setStats({
+      const calculatedStats = {
         activeClients,
         totalClients,
         todayJobTimes,
@@ -120,11 +147,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         averageHoursPerDay,
         activeUsers,
         totalUsers
-      });
+      };
+      setStats(calculatedStats);
     };
 
     calculateStats();
-  }, [clients, jobTimes, incidents, documents, users, loading]);
+  }, [clients, jobTimes, incidents, documents, users, clientsLoading, jobTimesLoading, incidentsLoading, documentsLoading, usersLoading]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -139,16 +167,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   useEffect(() => {
     const createRecentActivities = () => {
       // Don't create activities if still loading
-      if (loading) {
+      if (clientsLoading || jobTimesLoading || incidentsLoading || documentsLoading || usersLoading) {
         return;
       }
-
       const activities: RecentActivity[] = [];
       
       // Ensure arrays exist before using array methods
       const jobTimesArray = Array.isArray(jobTimes) ? jobTimes : [];
       const incidentsArray = Array.isArray(incidents) ? incidents : [];
-      
+
       // Add recent job times
       const recentJobTimes = jobTimesArray
         .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
@@ -179,12 +206,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       
       activities.push(...recentJobTimes, ...recentIncidents);
       activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
       setRecentActivities(activities.slice(0, 10));
     };
 
     createRecentActivities();
-  }, [jobTimes, incidents, loading]);
+  }, [jobTimes, incidents, jobTimesLoading, incidentsLoading, clientsLoading, documentsLoading, usersLoading]);
 
   // Quick action handlers
   const handleQuickAction = (action: string) => {
@@ -193,7 +219,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  if (loading) {
+  const isLoading = clientsLoading || jobTimesLoading || incidentsLoading || documentsLoading || usersLoading;
+  const hasError = clientsError || jobTimesError || incidentsError || documentsError || usersError;
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" text="Loading dashboard..." />
@@ -201,10 +230,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     );
   }
 
-  if (error) {
+  if (hasError) {
     return (
       <div className="space-y-4">
-        <ErrorDisplay error={error} onClear={() => console.log('Error cleared')} />
+        <ErrorDisplay error={clientsError || jobTimesError || incidentsError || documentsError || usersError || 'Unknown error'} onClear={() => {}} />
         <div className="bg-gray-50 rounded-lg p-8 text-center">
           <p className="text-gray-600">Unable to load dashboard data. Please try refreshing the page.</p>
         </div>
@@ -219,20 +248,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.fullName}!
+              Welcome back, {user?.firstName} {user?.lastName}!
             </h1>
             <p className="text-gray-600 mt-1">
               Here's what's happening with your care management today.
             </p>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
-            <Calendar size={16} />
-            <span>{new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}</span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              <Calendar size={16} />
+              <span>{new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}</span>
+            </div>
           </div>
         </div>
       </div>

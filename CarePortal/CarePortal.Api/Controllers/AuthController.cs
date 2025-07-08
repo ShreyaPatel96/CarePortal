@@ -17,6 +17,7 @@ public class AuthController : BaseController
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequestDto request)
     {
         if (!ModelState.IsValid)
@@ -35,6 +36,7 @@ public class AuthController : BaseController
     }
 
     [HttpPost("refresh-token")]
+    [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenRequestDto request)
     {
         if (!ModelState.IsValid)
@@ -81,7 +83,7 @@ public class AuthController : BaseController
             return StatusCode(500, new LogoutResponseDto
             {
                 Success = false,
-                Message = "An error occurred during logout"
+                Message = ex.Message
             });
         }
     }

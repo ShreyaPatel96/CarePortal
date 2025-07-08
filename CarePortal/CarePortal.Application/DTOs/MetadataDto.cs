@@ -4,7 +4,7 @@ public class MetadataDto
 {
     public string ParamKey { get; set; } = string.Empty;
     public string ParamValue { get; set; } = string.Empty;
-    public int ParamValueInt { get; set; } = 0; // Numeric enum value for automatic mapping
+    public int ParamValueInt { get; set; } = 0;
 }
 
 public class MetadataListDto

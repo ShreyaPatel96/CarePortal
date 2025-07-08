@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useDocument } from '../contexts/DocumentContext';
+import { useClient } from '../contexts/ClientContext';
 import FileUpload from './FileUpload';
 import { FileUploadService } from '../services/fileUploadService';
 import { DocumentStatusSummary, Document as DocumentType, documentService } from '../services/documentService';
@@ -67,8 +67,8 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
 };
 
 const DocumentManagement: React.FC = () => {
-  const { documents, documentsTotalCount, clients, addDocument, refreshDocuments } = useData();
-  const { user } = useAuth();
+  const { documents, documentsTotalCount, addDocument, refreshDocuments } = useDocument();
+  const { clients } = useClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -119,31 +119,9 @@ const DocumentManagement: React.FC = () => {
     loadDocuments();
   }, [currentPage, searchTerm, statusFilter]);
 
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
-
-  // Debounced search effect
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchTerm !== '') {
-        setCurrentPage(1); // Reset to first page when searching
-      }
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
   const loadDocuments = async () => {
     try {
       setLoading(true);
-      console.log('🔄 DocumentManagement - Loading documents with filters:', {
-        currentPage,
-        recordsPerPage,
-        statusFilter,
-        searchTerm
-      });
       
       // Use server-side pagination and filtering
       // The server should handle search by title, client name, and status filtering
@@ -152,7 +130,7 @@ const DocumentManagement: React.FC = () => {
         recordsPerPage, 
         undefined, // Let server handle client filtering
         statusFilter !== 'all' ? statusFilter : undefined,
-        searchTerm || undefined
+        searchTerm.trim() || undefined
       );
       
     } catch (error) {
@@ -162,6 +140,23 @@ const DocumentManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Always reset to first page when searching, even if search term is empty
+      setCurrentPage(1);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const loadDocumentStatuses = async () => {
     try {
@@ -268,7 +263,7 @@ const DocumentManagement: React.FC = () => {
   const handleRemoveFile = async () => {
     if (uploadedFileName) {
       try {
-        await FileUploadService.deleteFile(uploadedFileName, true);
+        await FileUploadService.deleteDocumentFile(uploadedFileName);
         setUploadedFileName('');
       } catch (error) {
         console.error('Error removing file:', error);
@@ -282,10 +277,9 @@ const DocumentManagement: React.FC = () => {
   const handleDownloadFile = async () => {
     if (uploadedFileName) {
       try {
-        await FileUploadService.downloadAndSaveFile(uploadedFileName, true);
+        await FileUploadService.downloadAndSaveFile(uploadedFileName, 'document');
       } catch (error) {
         console.error('Error downloading file:', error);
-        alert('Failed to download file. Please try again.');
       }
     }
   };
@@ -293,7 +287,7 @@ const DocumentManagement: React.FC = () => {
   // Handle download for existing documents
   const handleDownloadDocumentFile = async (fileName: string) => {
     try {
-      await FileUploadService.downloadAndSaveFile(fileName, true);
+      await FileUploadService.downloadAndSaveFile(fileName, 'document');
       showNotification('File downloaded successfully!', 'success');
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -314,7 +308,8 @@ const DocumentManagement: React.FC = () => {
 
   // Load existing files for selected client when upload modal opens
   const loadExistingFilesForClient = (clientId: number) => {
-    const clientDocuments = documents.filter(doc => doc.clientId === clientId && doc.fileName);
+    // Filter documents for the selected client that have files
+    documents.filter(doc => doc.clientId === clientId && doc.fileName);
   };
 
   // Handle client selection in upload modal
@@ -340,10 +335,9 @@ const DocumentManagement: React.FC = () => {
       // Upload the file first using FileController
       const uploadResponse = await FileUploadService.uploadDocumentFile(uploadFile);
       
-      // Link the uploaded file to the document using DocumentController
-      await documentService.linkFileToDocument(selectedDocumentForUpload.id, {
+      // Update the document with the file information
+      await documentService.updateDocument(selectedDocumentForUpload.id, {
         fileName: uploadResponse.fileName,
-        fileSize: uploadResponse.fileSize,
         fileType: uploadResponse.fileType
       });
       
@@ -384,36 +378,38 @@ const DocumentManagement: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      // Create document first
+      // Upload file first if selected
+      let fileName = '';
+      let fileType = '';
+      if (selectedFile) {
+        try {
+          const uploadResponse = await FileUploadService.uploadDocumentFile(selectedFile);
+          fileName = uploadResponse.fileName;
+          fileType = uploadResponse.fileType;
+          setUploadedFileName(uploadResponse.fileName);
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          showNotification('Failed to upload file. Please try again.', 'error');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Create document with file information
       const documentData = {
         clientId: parseInt(formData.clientId) || 0,
         title: formData.title,
         description: formData.description,
         deadline: formData.deadline,
-        isActive: formData.isActive
+        isActive: formData.isActive,
+        fileName: fileName || undefined,
+        fileType: fileType || undefined
       };
 
-      const createdDocument = await addDocument(documentData);
+      await addDocument(documentData);
 
-      // Upload file if selected
-      if (selectedFile && createdDocument) {
-        try {
-          // Upload file using FileController
-          const uploadResponse = await FileUploadService.uploadDocumentFile(selectedFile);
-          
-          // Link the uploaded file to the document using DocumentController
-          await documentService.linkFileToDocument(createdDocument.id, {
-            fileName: uploadResponse.fileName,
-            fileSize: uploadResponse.fileSize,
-            fileType: uploadResponse.fileType
-          });
-          
-          setUploadedFileName(uploadResponse.fileName);
-          showNotification('Document created and file uploaded successfully!', 'success');
-        } catch (error) {
-          console.error('Error uploading file:', error);
-          showNotification('Document created but file upload failed. Please try uploading the file again.', 'error');
-        }
+      if (fileName) {
+        showNotification('Document created and file uploaded successfully!', 'success');
       } else {
         showNotification('Document created successfully!', 'success');
       }

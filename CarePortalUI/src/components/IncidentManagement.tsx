@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useIncident } from '../contexts/IncidentContext';
+import { useClient } from '../contexts/ClientContext';
+import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useEnumMapping } from '../hooks/useEnumMapping';
 import { useToast } from '../hooks/useToast';
@@ -29,7 +31,9 @@ import {
 } from 'lucide-react';
 
 const IncidentManagement: React.FC = () => {
-  const { incidents, clients, users, addIncident } = useData();
+  const { incidents, addIncident } = useIncident();
+  const { clients } = useClient();
+  const { users } = useUser();
   const { user, isAdmin } = useAuth();
   const { showSuccess, showError, showInfo } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +48,7 @@ const IncidentManagement: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   
   const [formData, setFormData] = useState({
     clientId: '',
@@ -152,7 +156,7 @@ const IncidentManagement: React.FC = () => {
   const handleRemoveFile = async () => {
     if (uploadedFileName) {
       try {
-        await FileUploadService.deleteFile(uploadedFileName);
+        await FileUploadService.deleteIncidentFile(uploadedFileName);
         setUploadedFileName('');
         setFormData(prev => ({
           ...prev,
@@ -176,7 +180,7 @@ const IncidentManagement: React.FC = () => {
   const handleDownloadFile = async () => {
     if (uploadedFileName) {
       try {
-        await FileUploadService.downloadAndSaveFile(uploadedFileName);
+        await FileUploadService.downloadAndSaveFile(uploadedFileName, 'incident');
         showSuccess('File downloaded successfully');
       } catch (error) {
         console.error('Error downloading file:', error);
@@ -303,7 +307,7 @@ const IncidentManagement: React.FC = () => {
       let fileName = formData.fileName;
       if (selectedFile) {
         try {
-          const response = await FileUploadService.uploadFileGeneral(selectedFile);
+          const response = await FileUploadService.uploadIncidentFile(selectedFile);
           fileName = response.fileName;
           showInfo('File uploaded successfully');
         } catch (error) {
@@ -690,7 +694,7 @@ const IncidentManagement: React.FC = () => {
                           onClick={async () => {
                             if (incident.fileName) {
                               try {
-                                await FileUploadService.downloadAndSaveFile(incident.fileName);
+                                await FileUploadService.downloadAndSaveFile(incident.fileName, 'incident');
                                 showSuccess('File downloaded successfully');
                               } catch (error) {
                                 console.error('Error downloading file:', error);
@@ -1168,7 +1172,7 @@ const IncidentManagement: React.FC = () => {
                         onClick={async () => {
                           if (selectedIncident.fileName) {
                             try {
-                              await FileUploadService.downloadAndSaveFile(selectedIncident.fileName);
+                              await FileUploadService.downloadAndSaveFile(selectedIncident.fileName, 'incident');
                               showSuccess('File downloaded successfully');
                             } catch (error) {
                               console.error('Error downloading file:', error);

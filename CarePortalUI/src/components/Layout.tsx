@@ -78,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                 </span>
               </div>
               <div>
-                <p className="font-medium text-gray-900">{user?.fullName || 'Unknown User'}</p>
+                <p className="font-medium text-gray-900">{user?.firstName + ' ' + user?.lastName || 'Unknown User'}</p>
                 <p className="text-sm text-gray-500 capitalize">{user?.role || 'No Role'}</p>
               </div>
             </div>

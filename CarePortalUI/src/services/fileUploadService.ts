@@ -1,31 +1,33 @@
 import { apiService } from './api';
-import { config } from '../config/config';
 
 export interface FileUploadResponse {
   fileName: string;
-  fileUrl: string;
   originalFileName: string;
   fileSize: number;
   fileType: string;
+  uploadType: string;
+  createdAt: string;
+  lastModified: string;
 }
 
 export interface FileInfo {
   fileName: string;
-  fileUrl: string;
+  originalFileName: string;
   fileSize: number;
   fileType: string;
+  uploadType: string;
   createdAt: string;
   lastModified: string;
 }
 
 export class FileUploadService {
-  // Upload a file to the server
-  static async uploadFile(file: File): Promise<FileUploadResponse> {
+  // Upload a file to the server with upload type
+  static async uploadFile(file: File, uploadType: 'document' | 'incident' = 'document'): Promise<FileUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await apiService.post<FileUploadResponse>('/File/upload/document', formData, {
+      const response = await apiService.post<FileUploadResponse>(`/File/upload?uploadType=${uploadType}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -38,45 +40,19 @@ export class FileUploadService {
   }
 
   // Upload a file for documents
-  static async uploadDocumentFile(file: File): Promise<{ fileName: string; fileUrl: string; originalFileName: string; fileSize: number; fileType: string }> {
-    const formData = new FormData();
-    formData.append('File', file);
-
-    try {
-      const response = await apiService.post<{ fileName: string; fileUrl: string; originalFileName: string; fileSize: number; fileType: string }>('/File/upload/document', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response;
-    } catch (error) {
-      console.error('Error uploading document file:', error);
-      throw new Error('Failed to upload document file');
-    }
+  static async uploadDocumentFile(file: File): Promise<FileUploadResponse> {
+    return this.uploadFile(file, 'document');
   }
 
-  // Upload a general file (for incidents)
-  static async uploadFileGeneral(file: File): Promise<{ fileName: string; fileUrl: string; originalFileName: string; fileSize: number; fileType: string }> {
-    const formData = new FormData();
-    formData.append('File', file);
-
-    try {
-      const response = await apiService.post<{ fileName: string; fileUrl: string; originalFileName: string; fileSize: number; fileType: string }>('/File/upload/incident', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response;
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      throw new Error('Failed to upload file');
-    }
+  // Upload a file for incidents
+  static async uploadIncidentFile(file: File): Promise<FileUploadResponse> {
+    return this.uploadFile(file, 'incident');
   }
 
-  // Download a file
-  static async downloadFile(fileName: string): Promise<Blob> {
+  // Download a file with upload type
+  static async downloadFile(fileName: string, uploadType: 'document' | 'incident' = 'document'): Promise<Blob> {
     try {
-      const response = await apiService.get(`/File/download/${fileName}`, {
+      const response = await apiService.get(`/File/download?fileName=${encodeURIComponent(fileName)}&uploadType=${uploadType}`, {
         responseType: 'blob',
       }) as Blob;
       return response;
@@ -88,45 +64,38 @@ export class FileUploadService {
 
   // Download a document file
   static async downloadDocumentFile(fileName: string): Promise<Blob> {
-    try {
-      const response = await apiService.get(`/File/download/document/${fileName}`, {
-        responseType: 'blob',
-      }) as Blob;
-      return response;
-    } catch (error) {
-      console.error('Error downloading document file:', error);
-      throw new Error('Failed to download document file');
-    }
+    return this.downloadFile(fileName, 'document');
   }
 
-  // Get file information
-  static async getFileInfo(fileName: string): Promise<FileInfo> {
-    try {
-      const response = await apiService.get<FileInfo>(`/File/info/${fileName}`);
-      return response;
-    } catch (error) {
-      console.error('Error getting file info:', error);
-      throw new Error('Failed to get file information');
-    }
+  // Download an incident file
+  static async downloadIncidentFile(fileName: string): Promise<Blob> {
+    return this.downloadFile(fileName, 'incident');
   }
 
-  // Delete a file
-  static async deleteFile(fileName: string, isDocument: boolean = false): Promise<void> {
+  // Delete a file with upload type
+  static async deleteFile(fileName: string, uploadType: 'document' | 'incident' = 'document'): Promise<void> {
     try {
-      const endpoint = isDocument ? `/File/document/${fileName}` : `/File/incident/${fileName}`;
-      await apiService.delete(endpoint);
+      await apiService.delete(`/File/${encodeURIComponent(fileName)}?uploadType=${uploadType}`);
     } catch (error) {
       console.error('Error deleting file:', error);
       throw new Error('Failed to delete file');
     }
   }
 
+  // Delete a document file
+  static async deleteDocumentFile(fileName: string): Promise<void> {
+    return this.deleteFile(fileName, 'document');
+  }
+
+  // Delete an incident file
+  static async deleteIncidentFile(fileName: string): Promise<void> {
+    return this.deleteFile(fileName, 'incident');
+  }
+
   // Download and save file to local system
-  static async downloadAndSaveFile(fileName: string, isDocument: boolean = false): Promise<void> {
+  static async downloadAndSaveFile(fileName: string, uploadType: 'document' | 'incident' = 'document'): Promise<void> {
     try {
-      const blob = isDocument 
-        ? await this.downloadDocumentFile(fileName)
-        : await this.downloadFile(fileName);
+      const blob = await this.downloadFile(fileName, uploadType);
       
       // Create a download link
       const url = window.URL.createObjectURL(blob);
@@ -144,9 +113,9 @@ export class FileUploadService {
   }
 
   // Get file URL for display
-  static getFileUrl(fileName: string, isDocument: boolean = false): string {
-    const basePath = isDocument ? '/uploads/documents' : '/uploads/incidents';
-    return `${config.api.baseUrl}${basePath}/${fileName}`;
+  static getFileUrl(fileName: string, uploadType: 'document' | 'incident' = 'document'): string {
+    const basePath = uploadType === 'document' ? '/uploads/documents' : '/uploads/incidents';
+    return `${import.meta.env.VITE_API_BASE_URL}${basePath}/${fileName}`;
   }
 
   // Validate file type

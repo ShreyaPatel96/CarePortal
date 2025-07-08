@@ -4,6 +4,7 @@ using CarePortal.Application.Repository;
 using CarePortal.Domain.Entities;
 using CarePortal.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using System.Linq;
 
 namespace CarePortal.Application.Services;
 
@@ -32,13 +33,13 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardStatsDto> GetStatsAsync()
     {
-        var clients = _unitOfWork.Repository<Client>().GetAll().ToList();
+        var clients = await _unitOfWork.Repository<Client>().GetAllAsync();
         var users = _userManager.Users.ToList();
-        var jobTimes = _unitOfWork.Repository<JobTime>().GetAll().ToList();
-        var incidents = _unitOfWork.Repository<Incident>().GetAll().ToList();
-        var documents = _unitOfWork.Repository<ClientDocument>().GetAll().ToList();
+        var jobTimes = (await _unitOfWork.Repository<JobTime>().GetAllAsync()).ToList();
+        var incidents = (await _unitOfWork.Repository<Incident>().GetAllAsync()).ToList();
+        var documents = (await _unitOfWork.Repository<ClientDocument>().GetAllAsync()).ToList();
 
-        var totalClients = clients.Count;
+        var totalClients = clients.Count();
         var activeClients = clients.Count(c => c.IsActive);
         var totalUsers = users.Count;
         var activeUsers = users.Count(u => u.IsActive);
@@ -80,7 +81,7 @@ public class DashboardService : IDashboardService
         var activities = new List<RecentActivityDto>();
 
         // Get recent job times
-        var recentJobTimes = _unitOfWork.Repository<JobTime>().GetAll()
+        var recentJobTimes = (await _unitOfWork.Repository<JobTime>().GetAllAsync())
             .OrderByDescending(j => j.CreatedAt)
             .Take(count / 2)
             .ToList();
@@ -104,7 +105,7 @@ public class DashboardService : IDashboardService
         }
 
         // Get recent incidents
-        var recentIncidents = _unitOfWork.Repository<Incident>().GetAll()
+        var recentIncidents = (await _unitOfWork.Repository<Incident>().GetAllAsync())
             .OrderByDescending(i => i.CreatedAt)
             .Take(count / 2)
             .ToList();
@@ -127,7 +128,7 @@ public class DashboardService : IDashboardService
         }
 
         // Get recent documents
-        var recentDocuments = _unitOfWork.Repository<ClientDocument>().GetAll()
+        var recentDocuments = (await _unitOfWork.Repository<ClientDocument>().GetAllAsync())
             .OrderByDescending(d => d.CreatedAt)
             .Take(count / 4)
             .ToList();
@@ -149,7 +150,7 @@ public class DashboardService : IDashboardService
         }
 
         // Get recent clients
-        var recentClients = _unitOfWork.Repository<Client>().GetAll()
+        var recentClients = (await _unitOfWork.Repository<Client>().GetAllAsync())
             .OrderByDescending(c => c.CreatedAt)
             .Take(count / 4)
             .ToList();
@@ -189,24 +190,6 @@ public class DashboardService : IDashboardService
         {
             Stats = stats,
             RecentActivities = staffActivities
-        };
-    }
-
-    public async Task<DashboardDto> GetDashboardByClientAsync(int clientId)
-    {
-        var stats = await GetStatsAsync();
-        var recentActivities = await GetRecentActivitiesAsync();
-
-        // Filter activities for specific client
-        var clientActivities = recentActivities
-            .Where(a => a.RelatedEntityName != null && a.RelatedEntityName.Contains(clientId.ToString()))
-            .Take(10)
-            .ToList();
-
-        return new DashboardDto
-        {
-            Stats = stats,
-            RecentActivities = clientActivities
         };
     }
 } 

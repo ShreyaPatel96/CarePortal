@@ -21,6 +21,7 @@ public class MetadataController : BaseController
     }
 
     [HttpGet("get-metadata")]
+    [Authorize(Roles = "Admin")]
     public ActionResult<List<MetadataListDto>> GetMetadata()
     {
         try

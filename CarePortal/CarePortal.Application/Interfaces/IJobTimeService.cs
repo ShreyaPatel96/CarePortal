@@ -9,11 +9,4 @@ public interface IJobTimeService
     Task<JobTimeDto> CreateAsync(CreateJobTimeDto createJobTimeDto, string? currentUserId = null);
     Task<JobTimeDto> UpdateAsync(int id, UpdateJobTimeDto updateJobTimeDto, string? currentUserId = null);
     Task<bool> DeleteAsync(int id);
-    Task<bool> CompleteJobAsync(int id, DateTime endTime, string? currentUserId = null);
-    Task<List<JobTimeDto>> GetByClientAsync(int clientId);
-    Task<List<JobTimeDto>> GetByStaffAsync(string staffId);
-    Task<List<JobTimeDto>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
-    Task<JobTimeStatsDto> GetStatsAsync();
-    Task<JobTimeStatsDto> GetStatsByStaffAsync(string staffId);
-    Task<JobTimeStatsDto> GetStatsByClientAsync(int clientId);
 } 

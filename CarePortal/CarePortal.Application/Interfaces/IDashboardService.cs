@@ -8,5 +8,4 @@ public interface IDashboardService
     Task<DashboardStatsDto> GetStatsAsync();
     Task<List<RecentActivityDto>> GetRecentActivitiesAsync(int count = 10);
     Task<DashboardDto> GetDashboardByStaffAsync(string staffId);
-    Task<DashboardDto> GetDashboardByClientAsync(int clientId);
 } 

@@ -1,10 +1,9 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { config } from '../config/config';
 
 // Create axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
-  baseURL: config.api.baseUrl,
-  timeout: config.api.timeout,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: parseInt(import.meta.env.VITE_API_TIMEOUT),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -37,7 +36,7 @@ const refreshToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const response = await axios.post(`${config.api.baseUrl}/Auth/refresh-token`, {
+    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/Auth/refresh-token`, {
       refreshToken: refreshToken
     });
 
@@ -200,7 +199,6 @@ export class ApiService {
     
     // Check if there's already a pending request
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Deduplicating GET request: ${url}`);
       return pendingRequests.get(requestKey)!;
     }
     
@@ -225,7 +223,6 @@ export class ApiService {
     
     // Check if there's already a pending request
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Deduplicating POST request: ${url}`);
       return pendingRequests.get(requestKey)!;
     }
     
@@ -250,7 +247,6 @@ export class ApiService {
     
     // Check if there's already a pending request
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Deduplicating PUT request: ${url}`);
       return pendingRequests.get(requestKey)!;
     }
     
@@ -275,7 +271,6 @@ export class ApiService {
     
     // Check if there's already a pending request
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Deduplicating DELETE request: ${url}`);
       return pendingRequests.get(requestKey)!;
     }
     
@@ -300,7 +295,6 @@ export class ApiService {
     
     // Check if there's already a pending request
     if (pendingRequests.has(requestKey)) {
-      console.log(`🔄 Deduplicating PATCH request: ${url}`);
       return pendingRequests.get(requestKey)!;
     }
     

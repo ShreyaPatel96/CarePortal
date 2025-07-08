@@ -24,61 +24,42 @@ public class FileUploadService : IFileUploadService
         _allowedExtensions = configuration.GetSection("FileUpload:AllowedExtensions").Get<string[]>() 
             ?? new[] { ".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc", ".docx" };
         
-        _logger.LogInformation("FileUploadService initialized with IncidentPath: {IncidentPath}", _incidentUploadPath);
+        _logger.LogInformation("FileUploadService initialized with IncidentPath: {IncidentPath}, DocumentPath: {DocumentPath}", 
+            _incidentUploadPath, _documentUploadPath);
         
         // Ensure upload directories exist
-        if (!Directory.Exists(_incidentUploadPath))
+        EnsureDirectoryExists(_incidentUploadPath, "incident");
+        EnsureDirectoryExists(_documentUploadPath, "document");
+    }
+
+    private void EnsureDirectoryExists(string path, string type)
+    {
+        if (!Directory.Exists(path))
         {
             try
             {
-                Directory.CreateDirectory(_incidentUploadPath);
-                _logger.LogInformation("Created incident upload directory: {IncidentPath}", _incidentUploadPath);
+                Directory.CreateDirectory(path);
+                _logger.LogInformation("Created {Type} upload directory: {Path}", type, path);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create incident upload directory: {IncidentPath}", _incidentUploadPath);
+                _logger.LogError(ex, "Failed to create {Type} upload directory: {Path}", type, path);
                 throw;
             }
         }
         else
         {
-            _logger.LogInformation("Incident upload directory already exists: {IncidentPath}", _incidentUploadPath);
-        }
-        
-        if (!Directory.Exists(_documentUploadPath))
-        {
-            try
-            {
-                Directory.CreateDirectory(_documentUploadPath);
-                _logger.LogInformation("Created document upload directory: {DocumentPath}", _documentUploadPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create document upload directory: {DocumentPath}", _documentUploadPath);
-                throw;
-            }
-        }
-        else
-        {
-            _logger.LogInformation("Document upload directory already exists: {DocumentPath}", _documentUploadPath);
+            _logger.LogInformation("{Type} upload directory already exists: {Path}", type, path);
         }
     }
 
-    public async Task<string> UploadPhotoAsync(IFormFile photo)
+    public async Task<string> UploadFileAsync(IFormFile file, string uploadType = "document")
     {
-        _logger.LogInformation("Uploading incident photo to path: {IncidentPath}", _incidentUploadPath);
-        var fileName = await UploadFileAsync(photo, _incidentUploadPath);
-        _logger.LogInformation("Successfully uploaded incident photo: {FileName}", fileName);
-        return fileName;
+        var uploadPath = GetUploadPath(uploadType);
+        return await UploadFile(file, uploadPath);
     }
 
-    public async Task<string> UploadFileAsync(IFormFile file)
-    {
-        // Default to document upload path for general file uploads
-        return await UploadFileAsync(file, _documentUploadPath);
-    }
-
-    private async Task<string> UploadFileAsync(IFormFile file, string uploadPath)
+    private async Task<string> UploadFile(IFormFile file, string uploadPath)
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("File is required");
@@ -103,76 +84,43 @@ public class FileUploadService : IFileUploadService
             await file.CopyToAsync(stream);
         }
 
+        _logger.LogInformation("File uploaded successfully: {FileName} to {Path}", fileName, uploadPath);
         return fileName;
     }
 
-    public async Task<bool> DeletePhotoAsync(string photoPath)
+    public async Task<bool> DeleteFileAsync(string fileName, string uploadType = "document")
     {
-        return await DeleteFileAsync(photoPath, _incidentUploadPath);
+        var uploadPath = GetUploadPath(uploadType);
+        return await DeleteFile(fileName, uploadPath);
     }
 
-    public async Task<bool> DeleteFileAsync(string filePath)
-    {
-        // Try both paths for backward compatibility
-        var incidentPath = Path.Combine(_incidentUploadPath, filePath);
-        var documentPath = Path.Combine(_documentUploadPath, filePath);
-
-        if (File.Exists(incidentPath))
-        {
-            return await DeleteFileAsync(filePath, _incidentUploadPath);
-        }
-        else if (File.Exists(documentPath))
-        {
-            return await DeleteFileAsync(filePath, _documentUploadPath);
-        }
-
-        return false;
-    }
-
-    private async Task<bool> DeleteFileAsync(string fileName, string uploadPath)
+    private async Task<bool> DeleteFile(string fileName, string uploadPath)
     {
         var filePath = Path.Combine(uploadPath, fileName);
         if (File.Exists(filePath))
         {
             await Task.Run(() => File.Delete(filePath));
+            _logger.LogInformation("File deleted successfully: {FileName} from {Path}", fileName, uploadPath);
             return true;
         }
+        
+        _logger.LogWarning("File not found for deletion: {FileName} in {Path}", fileName, uploadPath);
         return false;
     }
 
-    public string GetPhotoUrl(string photoPath)
+    public string DownloadFileAsync(string fileName, string uploadType = "document")
     {
-        return $"{_baseUrl}/incidents/{photoPath}";
+        var uploadPath = GetUploadPath(uploadType);
+        return Path.Combine(uploadPath, fileName);
     }
 
-    public string GetFileUrl(string filePath)
+    private string GetUploadPath(string uploadType)
     {
-        return $"{_baseUrl}/documents/{filePath}";
-    }
-
-    public string GetFullFilePath(string fileName)
-    {
-        // Try both paths for backward compatibility
-        var incidentPath = Path.Combine(_incidentUploadPath, fileName);
-        var documentPath = Path.Combine(_documentUploadPath, fileName);
-
-        if (File.Exists(incidentPath))
+        return uploadType.ToLowerInvariant() switch
         {
-            return incidentPath;
-        }
-        else if (File.Exists(documentPath))
-        {
-            return documentPath;
-        }
-
-        return string.Empty;
-    }
-
-    public bool FileExists(string fileName)
-    {
-        var incidentPath = Path.Combine(_incidentUploadPath, fileName);
-        var documentPath = Path.Combine(_documentUploadPath, fileName);
-        
-        return File.Exists(incidentPath) || File.Exists(documentPath);
+            "incident" => _incidentUploadPath,
+            "document" => _documentUploadPath,
+            _ => throw new ArgumentException($"Invalid upload type: {uploadType}. Valid types are 'incident' and 'document'.")
+        };
     }
 } 

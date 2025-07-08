@@ -1,8 +1,6 @@
 using CarePortal.Domain.Entities;
 using CarePortal.Persistence.Context;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using CarePortal.Shared.Constants;
 
 namespace CarePortal.Api.Middleware;

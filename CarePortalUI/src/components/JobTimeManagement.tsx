@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useJobTime } from '../contexts/JobTimeContext';
+import { useClient } from '../contexts/ClientContext';
+import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useEnumMapping } from '../hooks/useEnumMapping';
 import { 
@@ -18,7 +20,9 @@ import {
 } from 'lucide-react';
 
 const JobTimeManagement: React.FC = () => {
-  const { jobTimes, clients, users, addJobTime, refreshJobTimes } = useData();
+  const { jobTimes, addJobTime, refreshJobTimes } = useJobTime();
+  const { clients } = useClient();
+  const { users } = useUser();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -29,7 +33,7 @@ const JobTimeManagement: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   
   const [formData, setFormData] = useState({
     staffId: user?.id || '',
